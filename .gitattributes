@@ -1,0 +1,2 @@
+# Lean tooling expects LF line endings; keep them LF on every platform.
+* text=auto eol=lf
