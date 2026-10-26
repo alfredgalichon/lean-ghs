@@ -1,14 +1,13 @@
 import GHS.CapacityMCS
+import Mathlib.Topology.Semicontinuous
 
 /-!
 # GHS Phase 6: welfare data and Lemma 1 (attainment of the rejected sets)
 
 The approved design for the algorithm side: the dual welfare function
 `c = G*` is carried as a bundle `WelfareDual` — a compact set `D` of feasible
-acceptances containing `0`, with a continuous real-valued cost on `D`,
-extended by `⊤` off `D`.  (Continuity on `D`, rather than mere lower
-semicontinuity, is a mild strengthening satisfied in all the paper's
-instances; it lets attainment run through `IsCompact.exists_isMinOn`.)
+acceptances containing `0`, with a lower-semicontinuous real-valued cost on
+`D`, extended by `⊤` off `D`.
 
 Machine-checked here, for capacities `qb ≥ 0`:
 
@@ -28,7 +27,7 @@ open Set
 namespace GHS
 
 /-- Dual welfare data: a compact feasible set of acceptances containing `0`,
-with a continuous real cost on it. -/
+with a lower-semicontinuous real cost on it. -/
 structure WelfareDual (ι : Type*) [Fintype ι] where
   /-- the domain of the dual welfare function (`dom G*`) -/
   D : Set (ι → ℝ)
@@ -36,7 +35,7 @@ structure WelfareDual (ι : Type*) [Fintype ι] where
   cost : (ι → ℝ) → ℝ
   hD_compact : IsCompact D
   hD_zero : 0 ∈ D
-  hcost_cont : ContinuousOn cost D
+  hcost_lsc : LowerSemicontinuousOn cost D
 
 namespace WelfareDual
 
@@ -76,16 +75,19 @@ theorem mem_D_of_mem_feas {qb u : ι → ℝ} (hu : u ∈ W.feas qb) :
   rw [h]
   exact hμ
 
-theorem robj_continuousOn (p qb : ι → ℝ) :
-    ContinuousOn (W.robj p qb) (W.feas qb) := by
-  refine ContinuousOn.add ?_ ?_
-  · refine W.hcost_cont.comp ((continuous_const.sub continuous_id).continuousOn) ?_
-    intro u hu
-    exact W.mem_D_of_mem_feas hu
+theorem robj_lowerSemicontinuousOn (p qb : ι → ℝ) :
+    LowerSemicontinuousOn (W.robj p qb) (W.feas qb) := by
+  refine LowerSemicontinuousOn.add ?_ ?_
+  · have hg : ContinuousOn (fun u : ι → ℝ => qb - u) (W.feas qb) :=
+      (continuous_const.sub continuous_id).continuousOn
+    have hm : MapsTo (fun u : ι → ℝ => qb - u) (W.feas qb) W.D :=
+      fun u hu => W.mem_D_of_mem_feas hu
+    have hcomp := W.hcost_lsc.comp hg hm
+    simpa only [Function.comp_apply] using hcomp
   · have h : Continuous (fun u : ι → ℝ => p ⬝ᵥ u) := by
       simp only [dotProduct]
       exact continuous_finset_sum _ fun i _ => continuous_const.mul (continuous_apply i)
-    exact h.continuousOn
+    exact h.continuousOn.lowerSemicontinuousOn
 
 theorem cFn_of_mem {μ : ι → ℝ} (hμ : μ ∈ W.D) :
     W.cFn μ = ((W.cost μ : ℝ) : ERealTop) := if_pos hμ
@@ -109,7 +111,7 @@ theorem rejectSet_eq (p qb : ι → ℝ) (hqb : 0 ≤ qb) :
         ∧ IsMinOn (W.robj p qb) (W.feas qb) u₀ := by
   have hne : (W.feas qb).Nonempty := ⟨qb, hqb, 0, W.hD_zero, by abel⟩
   obtain ⟨u₀, hu₀, hmin⟩ :=
-    (W.feas_compact qb).exists_isMinOn hne (W.robj_continuousOn p qb)
+    (W.robj_lowerSemicontinuousOn p qb).exists_isMinOn hne (W.feas_compact qb)
   refine ⟨u₀, hu₀, ?_, hmin⟩
   ext u
   constructor
@@ -150,8 +152,8 @@ theorem rejectSet_isClosed (p : ι → ℝ) {qb : ι → ℝ} (hqb : 0 ≤ qb) :
   have h1 : {u ∈ W.feas qb | W.robj p qb u ≤ W.robj p qb u₀}
       = W.feas qb ∩ (W.robj p qb) ⁻¹' (Iic (W.robj p qb u₀)) := rfl
   rw [h1]
-  exact (W.robj_continuousOn p qb).preimage_isClosed_of_isClosed
-    (W.feas_compact qb).isClosed isClosed_Iic
+  exact ((W.robj_lowerSemicontinuousOn p qb).isCompact_inter_preimage_Iic
+    (W.feas_compact qb) (W.robj p qb u₀)).isClosed
 
 /-- The objective is finite somewhere on `{u ≥ 0}` (the properness side
 condition of `qOrderSet_capacity`). -/

@@ -1,5 +1,5 @@
 import GHS.BoxCalculus
-import GHS.Rockafellar
+import ConvexAnalysis.FiniteDimensional
 
 /-!
 # GHS Phase 4 (item 11): the conjugacy theorem, Q ⟹ P direction
@@ -31,7 +31,7 @@ Pasch–Hausdorff regularization `f_L = f □ L‖·‖₁` (whose conjugate is
 `f* + ι_{[-L,L]ⁿ}`, so the P-hypothesis is preserved — boxes are modular).
 
 The convex-analysis vocabulary used here is provided by the Mathlib-only
-`GHS.Rockafellar` layer.
+`ConvexAnalysis.FiniteDimensional` layer.
 -/
 
 open Set

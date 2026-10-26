@@ -1,5 +1,5 @@
 import GHS.Orders
-import GHS.Rockafellar
+import ConvexAnalysis.FiniteDimensional
 import Mathlib.Analysis.Convex.Continuous
 import Mathlib.Analysis.SpecificLimits.Basic
 import Mathlib.Tactic.LinearCombination

@@ -7,11 +7,12 @@ import Mathlib.Topology.Algebra.Ring.Real
 import Mathlib.Topology.Algebra.Group.Basic
 
 /-!
-# GHS Phase 2: the Q-order implies the weak set order (Proposition 2)
+# GHS Phase 2: the P- and Q-orders imply the weak set order (Proposition 2)
 
-`GHS.qOrderSet_weakSetOrder` formalizes **Proposition 2**
-(`prop:qorderimplieswso`): for closed *nonempty* `Q, Q'` with `Q ≤_Q Q'`,
-one has `Q ≤_wso Q'` in the weak set order of Che–Kim–Kojima.
+`GHS.pOrderSet_weakSetOrder` and `GHS.qOrderSet_weakSetOrder` formalize
+**Proposition 2** (`prop:qorderimplieswso`): for *nonempty* `Q, Q'`, the
+P-order implies the weak set order; for closed nonempty `Q, Q'`, the Q-order
+does as well.
 
 Note the nonemptiness hypotheses: the paper omits them, but the statement is
 false for `Q ≠ ∅ = Q'` (the Q-order is vacuously true, the weak set order
@@ -35,6 +36,54 @@ variable {ι : Type*}
 point of `Q'`, and every point of `Q'` is above some point of `Q`. -/
 def WeakSetOrder (Q Q' : Set (ι → ℝ)) : Prop :=
   (∀ q ∈ Q, ∃ q' ∈ Q', q ≤ q') ∧ (∀ q' ∈ Q', ∃ q ∈ Q, q ≤ q')
+
+/-- **GHS Proposition 2**, P-order half: Veinott's strong set order implies
+the weak set order, for nonempty sets. -/
+theorem pOrderSet_weakSetOrder {Q Q' : Set (ι → ℝ)} (h : POrderSet Q Q')
+    (hne : Q.Nonempty) (hne' : Q'.Nonempty) : WeakSetOrder Q Q' := by
+  constructor
+  · intro q hq
+    obtain ⟨q', hq'⟩ := hne'
+    exact ⟨q ⊔ q', (h q hq q' hq').2, le_sup_left⟩
+  · intro q' hq'
+    obtain ⟨q, hq⟩ := hne
+    exact ⟨q ⊓ q', (h q hq q' hq').1, inf_le_right⟩
+
+/-- The Q-order implies the weak set order for nonempty sets.  Taking the
+entire positive discrepancy as the first transfer gives both weak comparisons
+directly; no topological assumptions are needed. -/
+theorem qOrderSet_weakSetOrder_of_nonempty {Q Q' : Set (ι → ℝ)}
+    (h : QOrderSet Q Q') (hne : Q.Nonempty) (hne' : Q'.Nonempty) :
+    WeakSetOrder Q Q' := by
+  have step : ∀ q ∈ Q, ∀ q' ∈ Q',
+      (∃ y ∈ Q', q ≤ y) ∧ (∃ x ∈ Q, x ≤ q') := by
+    intro q hq q' hq'
+    obtain ⟨δ₂, hδ₂, hx, hy⟩ :=
+      h q hq q' hq' ((q - q')⁺) ⟨posPart_nonneg _, le_refl _⟩
+    constructor
+    · refine ⟨q' + ((q - q')⁺ - δ₂), hy, fun i => ?_⟩
+      have hd := hδ₂.2 i
+      have hs := posPart_sub_negPart (q i - q' i)
+      simp only [Pi.add_apply, Pi.sub_apply, posPart_apply, negPart_apply] at hd ⊢
+      calc
+        q i = q' i + (q i - q' i)⁺ - (q i - q' i)⁻ := by linarith
+        _ ≤ q' i + (q i - q' i)⁺ - δ₂ i := by linarith
+        _ = q' i + ((q i - q' i)⁺ - δ₂ i) := by ring
+    · refine ⟨q - ((q - q')⁺ - δ₂), hx, fun i => ?_⟩
+      have hd := hδ₂.2 i
+      have hs := posPart_sub_negPart (q i - q' i)
+      simp only [Pi.sub_apply, posPart_apply, negPart_apply] at hd ⊢
+      calc
+        q i - ((q i - q' i)⁺ - δ₂ i) ≤
+            q i - ((q i - q' i)⁺ - (q i - q' i)⁻) := by linarith
+        _ = q' i := by linarith
+  constructor
+  · intro q hq
+    obtain ⟨q', hq'⟩ := hne'
+    exact (step q hq q' hq').1
+  · intro q' hq'
+    obtain ⟨q, hq⟩ := hne
+    exact (step q hq q' hq').2
 
 variable [Fintype ι]
 

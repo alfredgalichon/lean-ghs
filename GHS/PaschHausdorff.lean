@@ -28,7 +28,8 @@ set `φ_L := f* + ι_{[-L,L]ⁿ}` (`restrictCube`) and `f_L := (φ_L)*`.  Then:
   `y + z < f_{L_k}(a_k) + g_{L_k}(b_k) ≤ f q₁ + g q₂` eventually.  Conclude
   with `EReal.add_le_of_forall_lt`.
 
-This file depends only on Mathlib and the local `GHS.Rockafellar` layer.
+This file depends only on Mathlib and the local
+`ConvexAnalysis.FiniteDimensional` layer.
 -/
 
 open Set

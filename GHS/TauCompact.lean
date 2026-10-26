@@ -1185,6 +1185,48 @@ theorem tauInf_mem (hc : Exchangeable W.cFn)
       rw [← hmeq]
       exact hmX
 
+/-- Along a decreasing sequence of nonnegative capacities, the canonical
+least compactified waiting times increase to the canonical least waiting
+time at the limiting capacity. -/
+theorem tendsto_tauInf_of_antitone_capacity (hc : Exchangeable W.cFn)
+    (hDpos : ∀ q ∈ W.D, 0 ≤ q) (hDconv : Convex ℝ W.D)
+    (hcost_conv : ConvexOn ℝ W.D W.cost) (α : ι → ℝ)
+    {qk : ℕ → ι → ℝ} {q : ι → ℝ}
+    (hqk0 : ∀ k, 0 ≤ qk k) (hq0 : 0 ≤ q)
+    (hanti : Antitone qk) (hqlim : Tendsto qk atTop (𝓝 q)) :
+    Tendsto (fun k => W.tauInf α (qk k)) atTop (𝓝 (W.tauInf α q)) := by
+  have hqle : ∀ k, q ≤ qk k := by
+    intro k
+    apply le_of_tendsto hqlim
+    filter_upwards [eventually_ge_atTop k] with l hl
+    exact hanti hl
+  have hmono : Monotone (fun k => W.tauInf α (qk k)) := by
+    intro k l hkl
+    exact W.tauInf_anti_capacity hc hDpos hDconv hcost_conv α
+      (hqk0 l) (hanti hkl)
+  let τlim : ι → ENNReal := fun i => ⨆ k, W.tauInf α (qk k) i
+  have htend : Tendsto (fun k => W.tauInf α (qk k)) atTop (𝓝 τlim) := by
+    rw [tendsto_pi_nhds]
+    intro i
+    exact tendsto_atTop_iSup fun k l hkl => hmono hkl i
+  have hmem : τlim ∈ W.tauMinSet α q := by
+    apply W.tauMinSet_limit hDpos hDconv hcost_conv α
+      hqk0 hq0 hqlim htend
+    intro k
+    exact W.tauInf_mem hc hDpos hDconv hcost_conv α (qk k) (hqk0 k)
+  have hleast : W.tauInf α q ≤ τlim := by
+    intro i
+    unfold tauInf tauSetInf
+    exact iInf_le_of_le (⟨τlim, hmem⟩ : W.tauMinSet α q) le_rfl
+  have hub : τlim ≤ W.tauInf α q := by
+    intro i
+    unfold τlim
+    refine iSup_le fun k => ?_
+    exact (W.tauInf_anti_capacity hc hDpos hDconv hcost_conv α
+      hq0 (hqle k)) i
+  have heq : τlim = W.tauInf α q := le_antisymm hub hleast
+  rwa [heq] at htend
+
 /-- **G4 at the level required by Lemma 3.** Tightening a capacity to an
 optimal accepted mass leaves the *least* exact waiting time unchanged.
 Unlike equality of dual values, this uses exact KKT and meet-closure of the
@@ -1398,7 +1440,7 @@ theorem theorem3_exact_compact (hcG : Exchangeable WG.cFn)
       WH.ExtTight γ μ τγ ∧ WelfareDual.TauSlack μ μ τγ := by
   obtain ⟨s, μ, φ, hs0, hφ, hPt, hTt, hμ0, hμA, hG, hH⟩ :=
     theorem3_limit (WG := WG) (WH := WH) (α := α) (γ := γ)
-      hcG hDGpos hDHpos hDHconv hA0
+      hcG hDGpos hDHpos hDHconv hHcost_conv hA0
   have hμDG : μ ∈ WG.D := by
     obtain ⟨-, hD, -⟩ :=
       (WG.mem_rejectSet_iff_acceptance s.nonneg_Ainf).mp hG
@@ -1465,7 +1507,7 @@ theorem theorem3_exact_limits (hcG : Exchangeable WG.cFn)
       (fun k => s.Ainf_le (φ k)) hAt (hAt.sub hPt) ?_
     exact fun k => hrejG (φ k)
   have hH : 0 ∈ WH.rejectSet γ μ := by
-    refine WH.rejectSet_fixedPoint_of_tendsto hDHconv hDHpos γ
+    refine WH.rejectSet_fixedPoint_of_tendsto hDHconv hHcost_conv hDHpos γ
       (fun k => (s.nonneg_T (φ k)).trans (s.T_le_P (φ k)))
       (fun k => hrejH (φ k)) hPt hTt
   have hmono := DASequences.monotone_proposerTau WG s hcG hDGpos

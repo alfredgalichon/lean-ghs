@@ -21,7 +21,7 @@ comparative statics — are covered (at fixed `p`, resp. in unprojected form) by
 `GHS.qOrderSet_capacity` in `GHS/CapacityMCS.lean`; the projected `(ε, D)`
 forms are deferred (see the roadmap).
 
-Mathlib-only (via the standalone `GHS.Rockafellar` layer).
+Mathlib-only (via the standalone `ConvexAnalysis.FiniteDimensional` layer).
 -/
 
 namespace GHS

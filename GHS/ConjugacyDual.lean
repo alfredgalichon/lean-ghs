@@ -21,7 +21,8 @@ and the elementary estimate `dot_dual_bound` then give the exchange witness.
 The extension to general closed proper convex `f, g` (via Pasch–Hausdorff
 regularization) is the next step; see the roadmap.
 
-This file depends only on Mathlib and the local `GHS.Rockafellar` layer.
+This file depends only on Mathlib and the local
+`ConvexAnalysis.FiniteDimensional` layer.
 -/
 
 open Set

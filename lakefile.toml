@@ -10,8 +10,15 @@ name = "mathlib"
 git = "https://github.com/leanprover-community/mathlib4.git"
 rev = "2df2f0150c275ad53cb3c90f7c98ec15a56a1a67"
 
-# GHS: machine verification of Galichon-Hsieh-Sylvestre, "Monotone comparative
-# statics for submodular functions, with an application to aggregated deferred
+# Reusable finite-dimensional convex analysis used by the GHS library.
+[[lean_lib]]
+name = "ConvexAnalysis"
+
+[[lean_lib]]
+name = "UGS"
+
+# Machine verification of Galichon-Hsieh-Sylvestre, "Monotone comparative
+# statics under dual submodularity, with an application to aggregate deferred
 # acceptance". Mathlib-only; see README.md for the result map.
 [[lean_lib]]
 name = "GHS"

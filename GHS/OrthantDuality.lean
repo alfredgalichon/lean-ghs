@@ -1,5 +1,5 @@
 import GHS.Theorem3
-import GHS.Rockafellar
+import ConvexAnalysis.FiniteDimensional
 import Mathlib.Analysis.Convex.Function
 import Mathlib.Tactic.LinearCombination
 
@@ -107,19 +107,22 @@ variable {ι : Type*} [Fintype ι] (W : WelfareDual ι)
 noncomputable def Gfn (β : ι → ℝ) : ℝ :=
   sSup ((fun μ => μ ⬝ᵥ β - W.cost μ) '' W.D)
 
-theorem continuousOn_fobj (β : ι → ℝ) :
-    ContinuousOn (fun μ => μ ⬝ᵥ β - W.cost μ) W.D := by
-  refine ContinuousOn.sub ?_ W.hcost_cont
+theorem upperSemicontinuousOn_fobj (β : ι → ℝ) :
+    UpperSemicontinuousOn (fun μ => μ ⬝ᵥ β - W.cost μ) W.D := by
   have h : Continuous fun μ : ι → ℝ => μ ⬝ᵥ β := by
     simp only [dotProduct]
     exact continuous_finset_sum _ fun i _ => (continuous_apply i).mul continuous_const
-  exact h.continuousOn
+  have hneg : UpperSemicontinuousOn (fun μ => -W.cost μ) W.D :=
+    continuous_neg.comp_lowerSemicontinuousOn_antitone W.hcost_lsc
+      fun _ _ hle => neg_le_neg hle
+  simpa only [sub_eq_add_neg] using h.continuousOn.upperSemicontinuousOn.add hneg
 
 theorem exists_isMaxOn_Gfn (β : ι → ℝ) :
     ∃ μ₀ ∈ W.D, (∀ μ ∈ W.D, μ ⬝ᵥ β - W.cost μ ≤ μ₀ ⬝ᵥ β - W.cost μ₀) ∧
       W.Gfn β = μ₀ ⬝ᵥ β - W.cost μ₀ := by
   obtain ⟨μ₀, hμ₀D, hmax⟩ :=
-    W.hD_compact.exists_isMaxOn ⟨0, W.hD_zero⟩ (W.continuousOn_fobj β)
+    (W.upperSemicontinuousOn_fobj β).exists_isMaxOn
+      ⟨0, W.hD_zero⟩ W.hD_compact
   refine ⟨μ₀, hμ₀D, fun μ hμ => hmax hμ, ?_⟩
   refine IsGreatest.csSup_eq ⟨⟨μ₀, hμ₀D, rfl⟩, ?_⟩
   rintro x ⟨μ, hμ, rfl⟩
@@ -144,7 +147,8 @@ theorem exists_isMaxOn_boxValue (α : ι → ℝ) {qb : ι → ℝ} (hqb : 0 ≤
     exact isClosed_Iic (a := qb)
   have hne : (W.D ∩ {μ | μ ≤ qb}).Nonempty := ⟨0, W.hD_zero, hqb⟩
   obtain ⟨μ₁, hμ₁, hmax⟩ :=
-    hcpt.exists_isMaxOn hne ((W.continuousOn_fobj α).mono inter_subset_left)
+    ((W.upperSemicontinuousOn_fobj α).mono inter_subset_left).exists_isMaxOn
+      hne hcpt
   refine ⟨μ₁, hμ₁, fun μ hμ => hmax hμ, ?_⟩
   refine IsGreatest.csSup_eq ⟨⟨μ₁, hμ₁, rfl⟩, ?_⟩
   rintro x ⟨μ, hμ, rfl⟩
@@ -191,13 +195,18 @@ noncomputable def pval (α qb : ι → ℝ) (C : ℝ) (y : ι → ℝ) : ℝ :=
 theorem exists_isMaxOn_pobj (α qb : ι → ℝ) (C : ℝ) (y : ι → ℝ) :
     ∃ μ₀ ∈ W.D, (∀ μ ∈ W.D, W.pobj α qb C y μ ≤ W.pobj α qb C y μ₀) ∧
       W.pval α qb C y = W.pobj α qb C y μ₀ := by
-  have hcont : ContinuousOn (W.pobj α qb C y) W.D := by
-    refine (W.continuousOn_fobj α).sub (Continuous.continuousOn ?_)
-    refine continuous_const.mul ?_
+  have hpen : Continuous fun μ : ι → ℝ =>
+      -(C * ∑ i, (μ i - qb i - y i)⁺) := by
+    refine continuous_neg.comp (continuous_const.mul ?_)
     exact continuous_finset_sum _ fun i _ =>
       continuous_posPart_comp
         (((continuous_apply i).sub continuous_const).sub continuous_const)
-  obtain ⟨μ₀, hμ₀D, hmax⟩ := W.hD_compact.exists_isMaxOn ⟨0, W.hD_zero⟩ hcont
+  have husc : UpperSemicontinuousOn (W.pobj α qb C y) W.D := by
+    have h := (W.upperSemicontinuousOn_fobj α).add
+      hpen.continuousOn.upperSemicontinuousOn
+    simpa only [pobj, sub_eq_add_neg] using h
+  obtain ⟨μ₀, hμ₀D, hmax⟩ :=
+    husc.exists_isMaxOn ⟨0, W.hD_zero⟩ W.hD_compact
   refine ⟨μ₀, hμ₀D, fun μ hμ => hmax hμ, ?_⟩
   refine IsGreatest.csSup_eq ⟨⟨μ₀, hμ₀D, rfl⟩, ?_⟩
   rintro x ⟨μ, hμ, rfl⟩
@@ -348,22 +357,13 @@ theorem exists_pval_le (α : ι → ℝ) {qb : ι → ℝ} (hqb : 0 ≤ qb) {ε 
     have h2 : 0 ≤ (m : ℝ) * pen (μs m) :=
       mul_nonneg (Nat.cast_nonneg m) (hpen_nonneg (μs m))
     linarith
-  have htendf : Tendsto (fun k => f (μs (φ k))) atTop (𝓝 (f μhat)) := by
-    have hin : Tendsto (fun k => μs (φ k)) atTop (𝓝[W.D] μhat) :=
-      tendsto_nhdsWithin_iff.mpr
-        ⟨htend, Eventually.of_forall fun k => hμsD (φ k)⟩
-    have hcost : Tendsto (fun k => W.cost (μs (φ k))) atTop
-        (𝓝 (W.cost μhat)) :=
-      ((W.hcost_cont μhat hμhatD).tendsto).comp hin
-    have hdotc : Continuous fun μ : ι → ℝ => μ ⬝ᵥ α := by
-      simp only [dotProduct]
-      exact continuous_finset_sum _ fun i _ =>
-        (continuous_apply i).mul continuous_const
-    have hdott : Tendsto (fun k => μs (φ k) ⬝ᵥ α) atTop (𝓝 (μhat ⬝ᵥ α)) :=
-      (hdotc.tendsto μhat).comp htend
-    exact hdott.sub hcost
-  have hfhat : W.boxValue α qb + ε ≤ f μhat :=
-    ge_of_tendsto htendf (Eventually.of_forall fun k => hflarge (φ k))
+  have hfhat : W.boxValue α qb + ε ≤ f μhat := by
+    have hcpt := (W.upperSemicontinuousOn_fobj α).isCompact_inter_preimage_Ici
+      W.hD_compact (W.boxValue α qb + ε)
+    have hmem : ∀ k, μs (φ k) ∈
+        W.D ∩ f ⁻¹' Ici (W.boxValue α qb + ε) :=
+      fun k => ⟨hμsD (φ k), hflarge (φ k)⟩
+    exact (hcpt.isClosed.mem_of_tendsto htend (Eventually.of_forall hmem)).2
   linarith
 
 /-! ## Strong duality (ε-form) -/

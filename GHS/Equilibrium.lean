@@ -86,7 +86,7 @@ theorem theorem3_eps_equilibrium (hcG : Exchangeable WG.cFn)
         WH.Gfn (γ - τγ) ≤ μ ⬝ᵥ (γ - τγ) - WH.cost μ + ε) := by
   obtain ⟨s, μ, φ, hs0, hφ, hPt, hTt, hμ0, hμA, hG, hH⟩ :=
     theorem3_limit (WG := WG) (WH := WH) (α := α) (γ := γ)
-      hcG hDG hDH hDHconv hA0
+      hcG hDG hDH hDHconv hcostH_conv hA0
   refine ⟨s, μ, hs0, hμ0, hμA, hG, hH, ?_, ?_⟩
   · intro ε hε
     have hμD : μ ∈ WG.D := by

@@ -1,5 +1,6 @@
 import GHS.Proposition3
 import Mathlib.Analysis.Convex.Basic
+import Mathlib.Analysis.Convex.Function
 import Mathlib.Analysis.SpecificLimits.Basic
 
 /-!
@@ -112,19 +113,38 @@ theorem mem_rejectSet_iff_acceptance {p qb r : ι → ℝ} (hqb : 0 ≤ qb) :
       linarith
     linarith [h3]
 
-/-- Continuity of the acceptance objective along a sequence in `D`. -/
-theorem tendsto_aobj (p : ι → ℝ) {μs : ℕ → ι → ℝ} {μ : ι → ℝ}
-    (hmem : ∀ k, μs k ∈ W.D) (hμD : μ ∈ W.D)
-    (hlim : Tendsto μs atTop (𝓝 μ)) :
-    Tendsto (fun k => W.aobj p (μs k)) atTop (𝓝 (W.aobj p μ)) := by
-  have hin : Tendsto μs atTop (𝓝[W.D] μ) :=
-    tendsto_nhdsWithin_iff.mpr ⟨hlim, Eventually.of_forall hmem⟩
-  have hcost : Tendsto (fun k => W.cost (μs k)) atTop (𝓝 (W.cost μ)) :=
-    ((W.hcost_cont μ hμD).tendsto).comp hin
+/-- The acceptance objective is lower semicontinuous on the effective domain. -/
+theorem lowerSemicontinuousOn_aobj (p : ι → ℝ) :
+    LowerSemicontinuousOn (W.aobj p) W.D := by
   have hdotc : Continuous fun v : ι → ℝ => p ⬝ᵥ v := by
     simp only [dotProduct]
     exact continuous_finset_sum _ fun i _ => continuous_const.mul (continuous_apply i)
-  exact hcost.sub ((hdotc.tendsto μ).comp hlim)
+  have hneg : Continuous fun v : ι → ℝ => -(p ⬝ᵥ v) := continuous_neg.comp hdotc
+  simpa only [aobj, sub_eq_add_neg] using
+    W.hcost_lsc.add hneg.continuousOn.lowerSemicontinuousOn
+
+/-- A one-sided sequential consequence of lower semicontinuity. -/
+theorem aobj_le_of_tendsto_of_eventually_le (p : ι → ℝ)
+    {μs : ℕ → ι → ℝ} {μ : ι → ℝ} {b : ℝ}
+    (hmem : ∀ k, μs k ∈ W.D) (hlim : Tendsto μs atTop (𝓝 μ))
+    (hle : ∀ᶠ k in atTop, W.aobj p (μs k) ≤ b) :
+    W.aobj p μ ≤ b := by
+  have hcpt := (W.lowerSemicontinuousOn_aobj p).isCompact_inter_preimage_Iic
+    W.hD_compact b
+  have hseq : ∀ᶠ k in atTop, μs k ∈ W.D ∩ (W.aobj p) ⁻¹' Iic b :=
+    (Eventually.of_forall hmem).and hle
+  exact (hcpt.isClosed.mem_of_tendsto hlim hseq).2
+
+/-- Convexity bounds the acceptance objective on a radial segment from zero. -/
+theorem aobj_smul_le (hcost_conv : ConvexOn ℝ W.D W.cost) (p : ι → ℝ)
+    {ν : ι → ℝ} (hν : ν ∈ W.D) {θ : ℝ} (hθ0 : 0 ≤ θ) (hθ1 : θ ≤ 1) :
+    W.aobj p (θ • ν) ≤ θ * W.aobj p ν + (1 - θ) * W.aobj p 0 := by
+  have hc := hcost_conv.2 hν W.hD_zero hθ0 (sub_nonneg.mpr hθ1) (by ring)
+  rw [smul_zero, add_zero] at hc
+  unfold aobj
+  rw [dotProduct_smul]
+  simp only [smul_eq_mul, dotProduct_zero] at hc ⊢
+  linarith
 
 /-- **Closed graph along monotone capacities.** If capacities `qk k`
 decrease to `q` (in the sense `q ≤ qk k` with convergence) and `rk k` are
@@ -151,8 +171,104 @@ theorem rejectSet_limit_antitone (p : ι → ℝ) {qk rk : ℕ → ι → ℝ}
   · intro ν hν hνq
     have hstep : ∀ k, W.aobj p (qk k - rk k) ≤ W.aobj p ν :=
       fun k => (hchar k).2.2 ν hν (le_trans hνq (hqge k))
-    have htend := W.tendsto_aobj p (fun k => (hchar k).2.1) hμD hμlim
-    exact le_of_tendsto htend (Eventually.of_forall hstep)
+    exact W.aobj_le_of_tendsto_of_eventually_le p
+      (fun k => (hchar k).2.1) hμlim (Eventually.of_forall hstep)
+
+/-- Closed graph of optimal rejections for arbitrary convergent nonnegative
+capacities. The proof rescales each limiting feasible acceptance toward zero
+to obtain an eventually feasible comparison at every nearby capacity. -/
+theorem rejectSet_limit (hDconv : Convex ℝ W.D)
+    (hcost_conv : ConvexOn ℝ W.D W.cost)
+    (hDpos : ∀ μ ∈ W.D, 0 ≤ μ) (p : ι → ℝ)
+    {qk rk : ℕ → ι → ℝ} {q r : ι → ℝ}
+    (hqk0 : ∀ k, 0 ≤ qk k) (hq0 : 0 ≤ q)
+    (hqlim : Tendsto qk atTop (𝓝 q)) (hrlim : Tendsto rk atTop (𝓝 r))
+    (hrk : ∀ k, rk k ∈ W.rejectSet p (qk k)) :
+    r ∈ W.rejectSet p q := by
+  have hchar : ∀ k, 0 ≤ rk k ∧ qk k - rk k ∈ W.D ∧
+      ∀ ν ∈ W.D, ν ≤ qk k →
+        W.aobj p (qk k - rk k) ≤ W.aobj p ν :=
+    fun k => (W.mem_rejectSet_iff_acceptance (hqk0 k)).mp (hrk k)
+  have hμlim : Tendsto (fun k => qk k - rk k) atTop (𝓝 (q - r)) :=
+    hqlim.sub hrlim
+  have hμD : q - r ∈ W.D :=
+    W.hD_compact.isClosed.mem_of_tendsto hμlim
+      (Eventually.of_forall fun k => (hchar k).2.1)
+  have hr0 : 0 ≤ r := by
+    have hclosed : IsClosed {v : ι → ℝ | 0 ≤ v} :=
+      isClosed_Ici (a := (0 : ι → ℝ))
+    exact hclosed.mem_of_tendsto hrlim
+      (Eventually.of_forall fun k => (hchar k).1)
+  refine (W.mem_rejectSet_iff_acceptance hq0).mpr ⟨hr0, hμD, ?_⟩
+  intro ν hν hνq
+  have hν0 : 0 ≤ ν := hDpos ν hν
+  have hθstep : ∀ θ : ℝ, 0 ≤ θ → θ < 1 →
+      W.aobj p (q - r) ≤ W.aobj p (θ • ν) := by
+    intro θ hθ0 hθ1
+    have hθν : θ • ν ∈ W.D := by
+      have h : θ • ν + (1 - θ) • (0 : ι → ℝ) ∈ W.D :=
+        hDconv hν W.hD_zero hθ0 (by linarith) (by ring)
+      rwa [smul_zero, add_zero] at h
+    have hev : ∀ᶠ k in atTop, θ • ν ≤ qk k := by
+      have hall : ∀ᶠ k in atTop, ∀ i, (θ • ν) i ≤ qk k i := by
+        rw [eventually_all]
+        intro i
+        rcases eq_or_lt_of_le (hq0 i) with hzero | hpos
+        · have hνi : ν i = 0 := by
+            have h1 := hνq i
+            have h2 := hν0 i
+            have h3 : (0 : ℝ) = q i := hzero
+            linarith
+          exact Eventually.of_forall fun k => by
+            show θ * ν i ≤ qk k i
+            rw [hνi, mul_zero]
+            exact hqk0 k i
+        · have hlt : (θ • ν) i < q i := by
+            have h1 : θ * ν i ≤ θ * q i :=
+              mul_le_mul_of_nonneg_left (hνq i) hθ0
+            have h2 : θ * q i < q i := mul_lt_of_lt_one_left hpos hθ1
+            show θ * ν i < q i
+            linarith
+          have hti : Tendsto (fun k => qk k i) atTop (𝓝 (q i)) :=
+            tendsto_pi_nhds.mp hqlim i
+          exact (hti.eventually (eventually_gt_nhds hlt)).mono
+            fun k hk => le_of_lt hk
+      exact hall.mono fun k hk i => hk i
+    have hstep : ∀ᶠ k in atTop,
+        W.aobj p (qk k - rk k) ≤ W.aobj p (θ • ν) := by
+      exact hev.mono fun k hk => (hchar k).2.2 (θ • ν) hθν hk
+    exact W.aobj_le_of_tendsto_of_eventually_le p
+      (fun k => (hchar k).2.1) hμlim hstep
+  have hs : ∀ m : ℕ,
+      W.aobj p (q - r) ≤
+        W.aobj p ((1 - 1 / (m + 1 : ℝ)) • ν) := by
+    intro m
+    have h1 : (0 : ℝ) < 1 / (m + 1 : ℝ) := by positivity
+    have h2 : 1 / (m + 1 : ℝ) ≤ 1 := by
+      rw [div_le_one (by positivity)]
+      have : (0 : ℝ) ≤ (m : ℝ) := Nat.cast_nonneg m
+      linarith
+    exact hθstep _ (by linarith) (by linarith)
+  have hθtend : Tendsto (fun m : ℕ => 1 - 1 / (m + 1 : ℝ))
+      atTop (𝓝 1) := by
+    have h : Tendsto (fun m : ℕ => 1 / (m + 1 : ℝ)) atTop (𝓝 0) :=
+      tendsto_one_div_add_atTop_nhds_zero_nat
+    have h2 : Tendsto (fun m : ℕ => 1 - 1 / (m + 1 : ℝ))
+        atTop (𝓝 (1 - 0)) := tendsto_const_nhds.sub h
+    simpa using h2
+  have hrhs : Tendsto (fun m : ℕ =>
+      (1 - 1 / (m + 1 : ℝ)) * W.aobj p ν +
+        (1 - (1 - 1 / (m + 1 : ℝ))) * W.aobj p 0)
+      atTop (𝓝 (W.aobj p ν)) := by
+    simpa using (hθtend.mul_const (W.aobj p ν)).add
+      (((tendsto_const_nhds : Tendsto (fun _ : ℕ => (1 : ℝ)) atTop (𝓝 1)).sub
+        hθtend).mul_const (W.aobj p 0))
+  refine ge_of_tendsto hrhs (Eventually.of_forall fun m => (hs m).trans ?_)
+  have h1 : (0 : ℝ) < 1 / (m + 1 : ℝ) := by positivity
+  have h2 : 1 / (m + 1 : ℝ) ≤ 1 := by
+    rw [div_le_one (by positivity)]
+    exact_mod_cast Nat.succ_le_succ (Nat.zero_le m)
+  exact W.aobj_smul_le hcost_conv p hν (by linarith) (by linarith)
 
 /-- **The limit is a disposal fixed point.** If at each round `Pk k - Tk k`
 is an optimal rejection at capacity `Pk k`, and proposals and acceptances
@@ -161,6 +277,7 @@ converge to a common limit `μ`, then `0` is an optimal rejection at capacity
 recovered by scaling (`θ • ν`, `θ ↑ 1`), which needs `D` convex (with
 `0 ∈ D` and `D` in the nonnegative orthant, both already available). -/
 theorem rejectSet_fixedPoint_of_tendsto (hDconv : Convex ℝ W.D)
+    (hcost_conv : ConvexOn ℝ W.D W.cost)
     (hDpos : ∀ μ ∈ W.D, 0 ≤ μ) (γ : ι → ℝ) {Pk Tk : ℕ → ι → ℝ} {μ : ι → ℝ}
     (hP0 : ∀ k, 0 ≤ Pk k)
     (hrej : ∀ k, Pk k - Tk k ∈ W.rejectSet γ (Pk k))
@@ -221,8 +338,7 @@ theorem rejectSet_fixedPoint_of_tendsto (hDconv : Convex ℝ W.D)
       have h := (hchar k).2.2 (θ • ν) hθν hk
       have heq : Pk k - (Pk k - Tk k) = Tk k := by abel
       rwa [heq] at h
-    have htend := W.tendsto_aobj γ hTD hμD hTlim
-    exact le_of_tendsto htend hstep
+    exact W.aobj_le_of_tendsto_of_eventually_le γ hTD hTlim hstep
   -- Step 2: let θ ↑ 1 along the sequence 1 - 1/(m+1).
   have hs : ∀ m : ℕ, W.aobj γ μ ≤ W.aobj γ ((1 - 1 / (m + 1 : ℝ)) • ν) := by
     intro m
@@ -238,21 +354,19 @@ theorem rejectSet_fixedPoint_of_tendsto (hDconv : Convex ℝ W.D)
     have h2 : Tendsto (fun m : ℕ => 1 - 1 / (m + 1 : ℝ)) atTop (𝓝 (1 - 0)) :=
       tendsto_const_nhds.sub h
     simpa using h2
-  have hsmul : Tendsto (fun m : ℕ => (1 - 1 / (m + 1 : ℝ)) • ν) atTop (𝓝 ν) := by
-    have h := hθtend.smul_const ν
-    rwa [one_smul] at h
-  have hmem : ∀ m : ℕ, (1 - 1 / (m + 1 : ℝ)) • ν ∈ W.D := by
-    intro m
-    have h1 : (0:ℝ) < 1 / (m + 1 : ℝ) := by positivity
-    have h2 : 1 / (m + 1 : ℝ) ≤ 1 := by
-      rw [div_le_one (by positivity)]
-      have : (0:ℝ) ≤ (m : ℝ) := Nat.cast_nonneg m
-      linarith
-    have h : (1 - 1 / (m + 1 : ℝ)) • ν + (1 / (m + 1 : ℝ)) • (0 : ι → ℝ) ∈ W.D :=
-      hDconv hν W.hD_zero (by linarith) (by linarith) (by ring)
-    rwa [smul_zero, add_zero] at h
-  have htend := W.tendsto_aobj γ hmem hν hsmul
-  exact ge_of_tendsto htend (Eventually.of_forall hs)
+  have hrhs : Tendsto (fun m : ℕ =>
+      (1 - 1 / (m + 1 : ℝ)) * W.aobj γ ν +
+        (1 - (1 - 1 / (m + 1 : ℝ))) * W.aobj γ 0)
+      atTop (𝓝 (W.aobj γ ν)) := by
+    simpa using (hθtend.mul_const (W.aobj γ ν)).add
+      (((tendsto_const_nhds : Tendsto (fun _ : ℕ => (1 : ℝ)) atTop (𝓝 1)).sub
+        hθtend).mul_const (W.aobj γ 0))
+  refine ge_of_tendsto hrhs (Eventually.of_forall fun m => (hs m).trans ?_)
+  have h1 : (0 : ℝ) < 1 / (m + 1 : ℝ) := by positivity
+  have h2 : 1 / (m + 1 : ℝ) ≤ 1 := by
+    rw [div_le_one (by positivity)]
+    exact_mod_cast Nat.succ_le_succ (Nat.zero_le m)
+  exact W.aobj_smul_le hcost_conv γ hν (by linarith) (by linarith)
 
 end WelfareDual
 
@@ -274,7 +388,8 @@ The further decomposition into waiting times (the KKT multipliers of the
 paper's statement) is not taken here. -/
 theorem theorem3_limit (hcG : Exchangeable WG.cFn)
     (hDG : ∀ μ ∈ WG.D, 0 ≤ μ) (hDH : ∀ μ ∈ WH.D, 0 ≤ μ)
-    (hDHconv : Convex ℝ WH.D) {A0 : ι → ℝ} (hA0 : 0 ≤ A0) :
+    (hDHconv : Convex ℝ WH.D) (hHcost_conv : ConvexOn ℝ WH.D WH.cost)
+    {A0 : ι → ℝ} (hA0 : 0 ≤ A0) :
     ∃ (s : DASequences ι) (μ : ι → ℝ) (φ : ℕ → ℕ), s.A 0 = A0 ∧
       StrictMono φ ∧
       Tendsto (fun k => s.P (φ k)) atTop (𝓝 μ) ∧
@@ -297,7 +412,7 @@ theorem theorem3_limit (hcG : Exchangeable WG.cFn)
   · refine WG.rejectSet_limit_antitone α s.nonneg_Ainf
       (fun k => s.Ainf_le (φ k)) hAtend (hAtend.sub hPtend) ?_
     exact fun k => hG (φ k)
-  · refine WH.rejectSet_fixedPoint_of_tendsto hDHconv hDH γ
+  · refine WH.rejectSet_fixedPoint_of_tendsto hDHconv hHcost_conv hDH γ
       (fun k => le_trans (s.nonneg_T (φ k)) (s.T_le_P (φ k)))
       (fun k => hH (φ k)) hPtend hTtend
 
