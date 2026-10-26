@@ -23,9 +23,11 @@ to each other.
 
 ## What is verified
 
-All of the paper's results, with several statements sharpened and several
-proof gaps repaired (the repairs are catalogued in the companion errata note
-of the `self-lectures` development).
+All formal mathematical results stated and proved in the revised paper, with
+several statements sharpened and several proof gaps repaired (the repairs are
+catalogued in the companion errata note of the `self-lectures` development).
+Published results cited as inputs by the paper are identified as such in the
+result map; they are not presented as new proofs by the paper or this package.
 
 **Vocabulary and elementary theory**
 - `GHS/Orders.lean`: Q-/P-orders on functions and sets (values in
