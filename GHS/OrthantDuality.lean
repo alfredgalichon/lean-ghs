@@ -4,7 +4,7 @@ import Mathlib.Analysis.Convex.Function
 import Mathlib.Tactic.LinearCombination
 
 /-!
-# GHS Phase 6, item 22: Lemma 2 (Kuhn–Tucker) via orthant duality
+# Kuhn–Tucker conditions via orthant duality
 
 The waiting-time problem of GHS Appendix "Convergence of the algorithm":
 `inf_{τ ≥ 0} [ q̄ᵀτ + G(α - τ) ]` with `G(β) = max_{μ ∈ D} (μᵀβ - cost μ)`
@@ -22,13 +22,12 @@ The waiting-time problem of GHS Appendix "Convergence of the algorithm":
   convex `D`), and nondecreasing; a supergradient at `y = 0` is the desired
   `τ` (nonnegative by monotonicity), and `pval C 0 ↓ boxValue` as `C → ∞`
   by compactness of `D`;
-* `dual_value_eq_of_slack` — **Lemma 2, sufficiency**: if Fenchel–Young is
+* `dual_value_eq_of_slack` — **sufficiency**: if Fenchel–Young is
   tight at `(μ, α - τ)` and complementary slackness `τᵀ(q̄ - μ) = 0` holds
   for a feasible pair, both problems have value `μᵀα - cost μ`;
-* `kkt_of_min` — **Lemma 2, necessity**: an optimal `τ` and an optimal `μ`
+* `kkt_of_min` — **necessity**: an optimal `τ` and an optimal `μ`
   satisfy tightness and complementary slackness (the paper's
-  `T^G(α,q̄) = (α - ∂G*(μ)) ∩ {τ ≥ 0} ∩ {τᵀ(q̄-μ) = 0}`, with the `γ`/`α`
-  typo of the paper's statement fixed);
+  `T^G(α,q̄) = (α - ∂G*(μ)) ∩ {τ ≥ 0} ∩ {τᵀ(q̄-μ) = 0}`);
 * `boxValue_eq_of_mem_rejectSet` — the bridge to the algorithm: a rejection
   certificate `r ∈ rejectSet p q̄` says exactly that `q̄ - r` attains
   `boxValue p q̄`.
@@ -461,7 +460,7 @@ theorem isMin_of_slack (α : ι → ℝ) {qb τ μ : ι → ℝ} (hqb : 0 ≤ qb
   rw [W.dual_value_eq_of_slack α hqb hτ hμD hle htight hslack]
   exact W.boxValue_le α hqb hτ'
 
-/-- **Lemma 2, necessity (GHS lem:kuhnTucker, `γ`/`α` typo fixed)**: if
+/-- **Kuhn–Tucker necessity**: if
 `τ ≥ 0` minimizes the waiting-time objective and `μ` attains the box value,
 then Fenchel–Young is tight at `(μ, α - τ)` — the paper's
 `τ ∈ α - ∂G*(μ)` — and complementary slackness `τᵀ(q̄ - μ) = 0` holds. -/

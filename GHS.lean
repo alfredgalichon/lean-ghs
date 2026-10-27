@@ -1,8 +1,7 @@
 -- Root of the GHS library: verification of Galichon–Hsieh–Sylvestre,
 -- "Monotone comparative statics under dual submodularity, with an application
 -- to aggregate deferred acceptance" (revised version).
--- Roadmap: ../../pq-convexity/papers/galichon-hsieh-sylvestre/lean-roadmap.md
--- Errata followed: ../../pq-convexity/papers/galichon-hsieh-sylvestre/errata.md
+-- See README.md for the result map and build instructions.
 import GHS.Orders
 import GHS.BoxCalculus
 import GHS.Topkis

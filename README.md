@@ -24,8 +24,8 @@ to each other.
 ## What is verified
 
 All formal mathematical results stated and proved in the revised paper, with
-several statements sharpened and several proof gaps repaired (the repairs are
-catalogued in the companion errata note of the `self-lectures` development).
+several statements sharpened and several proof gaps repaired. The corrected
+hypotheses and conclusions are represented directly in the theorem statements.
 Published results cited as inputs by the paper are identified as such in the
 result map; they are not presented as new proofs by the paper or this package.
 
@@ -112,5 +112,4 @@ result map; they are not presented as new proofs by the paper or this package.
 
 This repository is a source-only snapshot of the `GHS` modules used in the
 paper, together with their `ConvexAnalysis` and minimal `UGS` source
-dependencies. The source is maintained in the canonical `self-lectures`
-development. It contains no generated build artifacts.
+dependencies. It contains no generated build artifacts.

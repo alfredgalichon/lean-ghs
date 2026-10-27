@@ -8,12 +8,12 @@ import Mathlib.Tactic.Linarith
 /-!
 # GHS Phase 0: the P- and Q-orders (vocabulary)
 
-Definitions for Galichon–Hsieh–Sylvestre, *Monotone comparative statics for
-submodular functions* (submitted version 2025-03-07):
+Definitions for Galichon–Hsieh–Sylvestre, *Monotone comparative statics under
+dual submodularity, with an application to aggregate deferred acceptance*
+(revised version):
 
 * `GHS.QOrder`, `GHS.Exchangeable` — the Q-order on extended-real-valued
-  functions (paper Definition "Q-order for functions and exchangeability",
-  with the `(x-y)` vs `(q-q')` typo fixed, errata T2);
+  functions (paper Definition "Q-order for functions and exchangeability");
 * `GHS.POrder`, `GHS.Submodular` — the P-order on functions;
 * `GHS.QOrderSet`, `GHS.IsMatron` — the Q-order on sets, matrons
   (paper Definition `def:DdsoOnSets`);
@@ -28,13 +28,11 @@ Functions take values in `ℝ∞ := WithTop ℝ` (convex proper functions never 
 because a `⊤` on the right-hand side trivializes the inequality. The strict
 `(ε, D)`-orders do carry explicit domain hypotheses, as in the paper.
 
-Statements are taken with the errata fixes
-(`pq-convexity/papers/galichon-hsieh-sylvestre/errata.md`); in particular
-nothing here depends on the erroneous Example 1 or on Claim 2(3).
+The definitions and statements correspond to the revised manuscript.
 
 Smoke tests at the end: singletons are matrons and sublattices, and the two
 set orders reduce to the coordinatewise order on singletons (the paper's two
-remarks after `def:DdsoOnSets`) — these validate the ∀/∃ structure of the
+remarks after `def:DdsoOnSets`); these validate the ∀/∃ structure of the
 definitions.
 -/
 
