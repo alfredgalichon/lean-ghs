@@ -23,6 +23,85 @@ def coordinateProjection (D : Set (Fin n)) (x : V) : D → ℝ := fun i => x i.1
 def projectedSet (D : Set (Fin n)) (X : Set V) : Set (D → ℝ) :=
   coordinateProjection D '' X
 
+/-- The `D`-restricted Q-order used internally by the comparative-statics
+proof implies the ordinary Q-order between the corresponding coordinate
+projections, exactly as stated in the paper. -/
+theorem qOrderSet_projected_of_qOrderSetD {D : Set (Fin n)} {X Y : Set V}
+    (hQ : QOrderSetD D X Y) :
+    QOrderSet (projectedSet D X) (projectedSet D Y) := by
+  rintro _ ⟨x, hx, rfl⟩ _ ⟨y, hy, rfl⟩ δ₁D hδ₁D
+  classical
+  let δ₁ : V := fun i => if hi : i ∈ D then δ₁D ⟨i, hi⟩ else 0
+  have hδ₁ : δ₁ ∈ Icc 0 ((x - y)⁺) := by
+    constructor <;> intro i
+    · by_cases hi : i ∈ D
+      · simpa [δ₁, hi] using hδ₁D.1 ⟨i, hi⟩
+      · simp [δ₁, hi]
+    · by_cases hi : i ∈ D
+      · simpa [δ₁, hi, coordinateProjection, Pi.sub_apply, posPart_apply] using
+          hδ₁D.2 ⟨i, hi⟩
+      · simp [δ₁, hi, posPart_nonneg]
+  have hδ₁support : ∀ i ∉ D, δ₁ i = 0 := by
+    intro i hi
+    simp [δ₁, hi]
+  obtain ⟨δ₂, hδ₂, hx', hy'⟩ := hQ x hx y hy δ₁ hδ₁ hδ₁support
+  let δ₂D : D → ℝ := fun i => δ₂ i.1
+  have hδ₂D : δ₂D ∈ Icc 0
+      ((coordinateProjection D x - coordinateProjection D y)⁻) := by
+    constructor <;> intro i
+    · exact (hδ₂ i.1 i.2).1
+    · simpa [δ₂D, coordinateProjection, Pi.sub_apply, negPart_apply] using
+        (hδ₂ i.1 i.2).2
+  refine ⟨δ₂D, hδ₂D, ?_, ?_⟩
+  · refine ⟨x - δ₁ + δ₂, hx', ?_⟩
+    ext i
+    simp [coordinateProjection, δ₁, δ₂D, i.2]
+    ring
+  · refine ⟨y + δ₁ - δ₂, hy', ?_⟩
+    ext i
+    simp [coordinateProjection, δ₁, δ₂D, i.2]
+    ring
+
+/-- The paper's exact forward comparative-statics statement. The existence of
+a finite-cost `q ≤ qb` supplies finite feasible points for both constrained
+problems, and the conclusion is the ordinary Q-order between the projected
+rejection sets. -/
+theorem qOrderSet_projected_capacity {c : V → ERealTop}
+    (hc : Exchangeable c) {p p' qb qb' : V} (hp : p ≤ p') (hqb : qb ≤ qb')
+    (hfeas : ∃ q, q ≤ qb ∧ c q ≠ ⊤) :
+    QOrderSet
+      (projectedSet {i | p i = p' i}
+        (argminOn (fun u => c (qb - u) + ((p ⬝ᵥ u : ℝ) : ERealTop))
+          {u : V | 0 ≤ u}))
+      (projectedSet {i | p i = p' i}
+        (argminOn (fun u => c (qb' - u) + ((p' ⬝ᵥ u : ℝ) : ERealTop))
+          {u : V | 0 ≤ u})) := by
+  obtain ⟨q, hqqb, hcq⟩ := hfeas
+  let u : V := qb - q
+  let u' : V := qb' - q
+  have hu0 : 0 ≤ u := by
+    intro i
+    dsimp [u]
+    linarith [hqqb i]
+  have hu'0 : 0 ≤ u' := by
+    intro i
+    dsimp [u']
+    linarith [hqqb i, hqb i]
+  have hproper : ∃ u ∈ {v : V | 0 ≤ v},
+      c (qb - u) + ((p ⬝ᵥ u : ℝ) : ERealTop) ≠ ⊤ := by
+    refine ⟨u, hu0, ?_⟩
+    have harg : qb - u = q := by simp [u]
+    rw [harg]
+    exact WithTop.add_ne_top.mpr ⟨hcq, WithTop.coe_ne_top⟩
+  have hproper' : ∃ u ∈ {v : V | 0 ≤ v},
+      c (qb' - u) + ((p' ⬝ᵥ u : ℝ) : ERealTop) ≠ ⊤ := by
+    refine ⟨u', hu'0, ?_⟩
+    have harg : qb' - u' = q := by simp [u']
+    rw [harg]
+    exact WithTop.add_ne_top.mpr ⟨hcq, WithTop.coe_ne_top⟩
+  exact qOrderSet_projected_of_qOrderSetD
+    (qOrderSetD_capacity hc hp hqb hproper hproper')
+
 /-- Projected Q-order gives the one-sided coordinate comparison used in the
 converse proof. -/
 theorem projectedQOrder_exists_ge_on {D : Set (Fin n)} {X Y : Set V}

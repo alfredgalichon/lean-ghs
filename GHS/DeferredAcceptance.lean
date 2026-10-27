@@ -121,6 +121,20 @@ theorem P_mem_box [Fintype ι] (k : ℕ) : s.P k ∈ Set.Icc 0 (s.A 0) := by
   · exact le_trans (s.nonneg_T k) (s.T_le_P k)
   · exact le_trans (s.P_le_A k) (s.antitone_A (Nat.zero_le k))
 
+/-- Along every convergent proposal subsequence, the tentative acceptances
+converge to the same limit. This is the universal form of Theorem 3, item 4. -/
+theorem tendsto_T_subseq_of_tendsto_P [Fintype ι]
+    {φ : ℕ → ℕ} {μ : ι → ℝ} (hφ : StrictMono φ)
+    (hP : Tendsto (fun k => s.P (φ k)) atTop (𝓝 μ)) :
+    Tendsto (fun k => s.T (φ k)) atTop (𝓝 μ) := by
+  have hsub : Tendsto (fun k => s.P (φ k) - s.T (φ k)) atTop (𝓝 0) :=
+    s.tendsto_sub_PT.comp hφ.tendsto_atTop
+  have h := hP.sub hsub
+  rw [sub_zero] at h
+  refine h.congr fun k => ?_
+  show s.P (φ k) - (s.P (φ k) - s.T (φ k)) = s.T (φ k)
+  abel
+
 /-- **Theorem 3, subsequence extraction (the `μ` part)**: some subsequence of
 the proposals converges, and along it the tentative acceptances converge to
 the same limit (their gap vanishes). -/
@@ -130,14 +144,7 @@ theorem exists_subseq_tendsto [Fintype ι] :
       Tendsto (fun k => s.T (φ k)) atTop (𝓝 μ) := by
   obtain ⟨μ, hμ, φ, hφ, htend⟩ :=
     (isCompact_Icc (a := (0 : ι → ℝ)) (b := s.A 0)).tendsto_subseq s.P_mem_box
-  refine ⟨μ, hμ, φ, hφ, htend, ?_⟩
-  have hsub : Tendsto (fun k => s.P (φ k) - s.T (φ k)) atTop (𝓝 0) :=
-    s.tendsto_sub_PT.comp hφ.tendsto_atTop
-  have h := htend.sub hsub
-  rw [sub_zero] at h
-  refine h.congr fun k => ?_
-  show s.P (φ k) - (s.P (φ k) - s.T (φ k)) = s.T (φ k)
-  abel
+  exact ⟨μ, hμ, φ, hφ, htend, s.tendsto_T_subseq_of_tendsto_P hφ htend⟩
 
 end DASequences
 

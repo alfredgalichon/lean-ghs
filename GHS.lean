@@ -37,7 +37,9 @@ import GHS.Proposition3
 import GHS.Theorem3
 import GHS.OrthantDuality
 import GHS.TauCompact
+import GHS.UniversalTheorem3
 import GHS.ExtendedWelfareContinuity
 import GHS.Equilibrium
 import GHS.RandomUtility
 import GHS.CappedLogit
+import GHS.Persistence
